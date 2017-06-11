@@ -1,0 +1,78 @@
+<!DOCTYPE html><html lang="en-Us"><head><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><meta name="baidu-site-verification" content="1EB8XoOl0C" /><title> Efficient data transfer through zero copy · eshenhu's blog</title><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Efficient data transfer through zero copy - eshenhu"><meta name="keywords"><meta name="author" content="eshenhu"><link rel="short icon" href="/images/favicon.ico"><link rel="stylesheet" href="/css/bubuzou.css"><link rel="search" type="application/opensearchdescription+xml" href="https://eshenhu.github.io/atom.xml" title="eshenhu's blog"></head><body><header><div class="header row"> <a href="/" class="logo-link"><img src="/images/logo.png"></a><ul class="nav nav-list"><li class="nav-list-item"><a href="/" target="_self" data-hover="博文" class="nav-list-link">博文</a></li><li class="nav-list-item"><a href="/archives/" target="_self" data-hover="归档" class="nav-list-link">归档</a></li><li class="nav-list-item"><a href="/categories/live/" target="_self" data-hover="生活" class="nav-list-link">生活</a></li><li class="nav-list-item"><a href="/categories/film/" target="_self" data-hover="摄影" class="nav-list-link">摄影</a></li><li class="nav-list-item"><a href="/about/" target="_self" data-hover="关于" class="nav-list-link">关于</a></li></ul><div class="search"><a id="search_btn" href="#search"></a></div></div></header><div class="row scroll-con"><section class="container"><!-- for archive page--><div id="postAr" class="post"><article class="post-block"><h1 class="post-title">Efficient data transfer through zero copy</h1><div class="post-info">2017-06-05 00:21</div><div class="post-content"><h2 id="Zero-copy-I-O-practice-in-project"><a href="#Zero-copy-I-O-practice-in-project" class="headerlink" title="Zero-copy I/O practice in project"></a>Zero-copy I/O practice in project</h2><p>Recently weeks, I was working on how to exploit the potentialities with the GMAC(1G Ethernet Media Access Controller)  on the SoC in my desktop. This SoC was used in the telecommunication field which provide the fast-transfer-data capability with some interesting MAC features. In this article, I had like share some experiences on how to utilize this MAC achieving better network throughput during this work.</p>
+<h2 id="Preface"><a href="#Preface" class="headerlink" title="Preface"></a>Preface</h2><p>@[Blog]</p>
+<p>The following articles were worth having a look before going forward.</p>
+<ul>
+<li><a href="http://www.linuxjournal.com/article/6345" target="_blank" rel="external">Zero Copy I: User-Mode Perspective </a> (from Linux Journal, strongly recommended to read)</li>
+<li><a href="http://dl.acm.org/citation.cfm?id=974947" target="_blank" rel="external">An Efficient Zero-Copy I/O Framework for UNIX</a> (most of thoughts comes from here)</li>
+</ul>
+<a id="more"></a>
+<p>After reading these articles, then you will know how the Java.nio.channels works. If you have more time, you can dig more on the Kafaka, the most popular message queue framework written by LinkedIn.</p>
+<p>So, let’s first look at the capability of PHY/MAC in my hand.</p>
+<p>The PHY was provided by Atheros AR8031 as Ethernet transceiver and Atheros AR8327 as Ethernet switch.</p>
+<ul>
+<li>Compatible with IEEE Standard 802.3.</li>
+<li>Full duplex operation 1000 Mbps operation speeds.</li>
+<li>Statistics counter registers for RMON/MIB.</li>
+<li>Embedded DMA.</li>
+<li>Only for SGMII: Integrated Physical Coding Sub-layer (PCS) with auto-negotiation.</li>
+<li>MDIO interface provided to control external phys from the Embedded RISC processor.</li>
+<li>Automatic pad and cyclic redundancy check (CRC) generation on transmitted frames.</li>
+<li>Automatic discard of frames received with errors.</li>
+<li>Receive and transmit IP, TCP and UDP checksum offload. Both IPv4 and IPv6 packet types supported.</li>
+<li>Address checking logic for four specific 48-bit addresses, four types of Ids, promiscuous mode, external<br>address checking, hash matching for unicast and multicast destination addresses and Wake-on-LAN.</li>
+<li>Programmable IPG stretch.</li>
+<li>Support for 802.1Q VLAN tagging with recognition of incoming VLAN and priority tagged frames.</li>
+<li>Support for 802.1Qbb priority-based flow control – PFC Negotiation mode.</li>
+<li>Full utilization of the Tx 1 Gbps line.</li>
+<li>Provides sufficient buffer 16KB to support lossless reception of maximum length (jumbo-type) up to 10,240Bytes Ethernet frames.</li>
+<li>For RGMII only: RGMII electrical characteristics compliant with RGMII v1.3 (thus based upon 2.5V CMOS interface voltages as defined by JEDEC EIA/JESD8-5), and are not compliant with RGMII v2.0.</li>
+<li>Support for 1588 V1/V2.</li>
+<li>Support for 802.3az Energy Efficient Ethernet</li>
+</ul>
+<p>Some advanced features which attract on me were:</p>
+<ul>
+<li>Statistics counter registers for RMON/MIB. (then we can get performance comparison on the MAC level, great feature.)</li>
+<li>Programmable IPG stretch.</li>
+<li>Checksum offload.</li>
+<li>Automatic padding and CRC generation.</li>
+<li>10KB buffer!</li>
+<li>Sctter-Gather capability!</li>
+</ul>
+<h2 id="Do-it"><a href="#Do-it" class="headerlink" title="Do it"></a>Do it</h2><p>In this embedded project, it was not allowed 3rd organization/person install/uninstall any package without authorization, which was guaranteed by the Trust Zone Area, it means any installed package after HASH self-signed must be verified by the public key install on this area, otherwise it will failed to get install or upgrade. </p>
+<p>What I want to said was - we trust the software installed on the board. Then it means we don’t need to consider the security issues mentioned in the 2nd article. Then we can simplify our design without considering security.</p>
+<p>Some highlight feature include:</p>
+<ul>
+<li>Direct linear address mapping (vir2phy, phy2vir). support more than one page size space.</li>
+<li>Zero-copy from filling the message in user space to sending message into the device in kernel space. (This GMAC support scatter-gather functionality , and the kernel later than 2.6.xx support the scatter-gather functionality)</li>
+<li>Public API to application in user space, another public API to device driver in kernel module.</li>
+<li>It provide a simple memory cache scheme in user space level, decreasing the system trap call on most circumstances. as well as it will re-fill/request to the memory pool if the threshold reached, one system call was happened only till this time.</li>
+<li>It expose more detailed real-time information in /proc file-system. </li>
+</ul>
+<p>Some aspects need to consider in front of project are:</p>
+<ul>
+<li>Memory access time is unpredictable.</li>
+<li>Memory bandwidth is limited.</li>
+<li>Data change between application is very high.</li>
+<li>Lifetime of exchanging data was short. (get/put)</li>
+<li>Linux use page table translation to get better protection, which means it was not so straightforward to access memory.</li>
+<li>Other hardware limitation, (System BUS bandwidth, MAC interface).</li>
+</ul>
+<p>These limitations/requirements decide the way what we do.  </p>
+<p>In purpose of better memory management between kernel space and user space, we setup a raw virtual device with fixed I/O start address and length when start kernel, then both user space application which can use mmap() mapping the I/O space to its own virtual address and kernel module can access the same memory address via the fixed offset.</p>
+<p>There are some inherent access attributes on those memory, so it is necessary to have a test on which cache scheme was best suit for our requirement.</p>
+<img src="/2017/06/05/Efficient-data-transfer-through-zero-copy/cache-02.png" alt="Picture-01" title="Picture-01">
+<p>For achieve the best system efficiency: </p>
+<ul>
+<li>Use L1-only cached memory.</li>
+<li>Zero-copy whenever possible.</li>
+<li>Minimize number of system calls and context switch.</li>
+</ul>
+<p>So, let’s have a look at this picture show:<br><img src="/2017/06/05/Efficient-data-transfer-through-zero-copy/zero-copy.png" alt="Picture-02" title="Picture-02"></p>
+<h2 id="Design-details"><a href="#Design-details" class="headerlink" title="Design details"></a>Design details</h2><h2 id="End"><a href="#End" class="headerlink" title="End"></a>End</h2><p>Actually, in our products, other module/process also use this POOL as hot-fast data storage, such like we develop the fsyslog which was an log framework providing the functions like syslogd(…) in Unix but it provide shared-memory based logging scheme with faster and non-blocking operation when logging in user application, etc. </p>
+<p>Later I will show the comparison after this changes, which achieving more than 30% throughput boost in whole and 2% load decrease in our specified product.</p>
+</div></article></div><div class="right-container"><div class="widget"><div class="category"><h4>分类归档</h4></div></div><div class="widget"><div class="tagcloud"><h4>标签云</h4><a href="/tags/Language/" style="font-size: 10px;">Language</a></div></div><div class="widget"><div class="recent"><h4>最近文章</h4><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2017/06/05/Efficient-data-transfer-through-zero-copy/">Efficient data transfer through zero copy</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/04/don-t-use-memset-init-your-struct/">don't use memset() init your struct</a></li><li class="post-list-item"><a class="post-list-link" href="/2017/06/04/hello-world/">Hello World</a></li></ul></div></div><div class="widget"><div id="arAnchorBar"></div></div></div></section></div><div class="right-menu"></div><div class="modal search-modal"><div class="input-field"><input type="text" id="search_input"><label for="search-input">搜索</label></div><div id="search_result" class="search-result"></div></div><div class="blog-overlay"></div><footer class="row"><div class="footer-con"><div class="paginator"><a href="/2017/06/04/don-t-use-memset-init-your-struct/" class="next">NEXT</a></div><div id="cloud-tie-wrapper" class="cloud-tie-wrapper"></div><script>var cloudTieConfig = {
+    url: document.location.href, 
+    sourceId: "",
+    productKey: "656e246ebfc7420d82eb5d9a339b50c2",
+    target: "cloud-tie-wrapper"
+};</script><script src="https://img1.cache.netease.com/f2e/tie/yun/sdk/loader.js"></script><div class="copyright"><p>© 2016 - 2017 <a target="_blank">eshenhu</a>, powered by <a href="https://hexo.io/" target="_blank">Hexo</a> <br> and <a href="https://github.com/Bulandent/hexo-theme-bubuzou" target="_blank">hexo-theme-bubuzou</a>.</p></div><div class="totop"><i></i></div></div></footer><script async src="//cdn.bootcss.com/mathjax/2.6.1/MathJax.js?config=TeX-MML-AM_CHTML"></script><script src="/scripts/jquery-1.8.2.min.js"></script><script src="/scripts/arAnchor.js"></script><script src="/scripts/main.js"></script><script>(function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=function(){(b[l].q=b[l].q||[]).push(arguments)});b[l].l=+new Date;e=o.createElement(i);r=o.getElementsByTagName(i)[0];e.src='//www.google-analytics.com/analytics.js';r.parentNode.insertBefore(e,r)}(window,document,'script','ga'));ga('create',"UA-65933410-1",'auto');ga('send','pageview');</script></body></html>
