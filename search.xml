@@ -3,6 +3,26 @@
   
     
     <entry>
+      <title><![CDATA[Some thoughts about memory issue]]></title>
+      <url>/2017/06/26/Some-thoughts-about-memory-issue/</url>
+      <content type="html"><![CDATA[<p>最近一段时间在忙于内存问题的事情，算是有些成果输出吧。借机谈论一下自己的感想。</p>
+<p>近来工程团队遇到几次比较严重的内存泄漏问题,有一些问题无疾而终.在接手工作后发现这些问题均是发生<br>在客户的现场,很难在实验室复现. 即使能够在长时间stability测试发现问题，因为现场发生比较遥远，<br>也是很难去定位问题. 针对此类问题,团队近期输出了几个内部产品, 较好的解决了其中的一些问题。</p>
+<a id="more"></a>
+<p>项目团队在 Devops team 的协助下已经有一套比较完备的测试工具, 单元测试，valgrind内存检查.<br>但是在集成测试阶段还是缺乏手段去快速定位内存问题。针对此类问题</p>
+<ul>
+<li>工程团队重构了自定义的内存分配器，加入了头尾两部分的magic number, FREE() 内存后reset<br>内存单元内容. 在每次 ALLOC()/FREE() 强制检查合法性, 第一时间保留现场.</li>
+<li>针对 wild pointer visit 的棘手问题的时候, 工程团队兵分两路. 一路从现有的集成测试出发，<br>使用valgrind工具编译代码直接进入集成测试阶段进行验证.针对实时性很强的部分进行stub处理.<br>另外一路，从系统角度，引入 <code>dynamic memory check</code>. 大致原理是binding 一个实时性可以调整<br>的background线程, 使用kernel调度进行实时性内存检查, 一旦发生内存越界 magic number over<br>ride 情况立刻报告. 实时性视内存问题严重性选择可调.</li>
+<li>统计内存泄漏问题，输出了一个增强功能，主要是在内存分配阶段增加extra struct 到历史容器<br>存储. 添加<strong>FUNCTION</strong>, <strong>LINENUMBER</strong>, 方便定位问题.</li>
+<li>集成测试采用震荡的方式进行用例测试，放大内存泄漏问题. 使用 snapshot 功能定制差异比较.</li>
+<li>和Devops团队合作把内存检查当作必要测试添加到robust测试用例当中.</li>
+</ul>
+<p>通过工程团队的一段时间的持续改进,一些问题在后续的解决过程中得到效率的提升.</p>
+]]></content>
+      
+        
+    </entry>
+    
+    <entry>
       <title><![CDATA[Efficient data transfer through zero copy]]></title>
       <url>/2017/06/05/Efficient-data-transfer-through-zero-copy/</url>
       <content type="html"><![CDATA[<h2 id="Zero-copy-I-O-practice-in-project"><a href="#Zero-copy-I-O-practice-in-project" class="headerlink" title="Zero-copy I/O practice in project"></a>Zero-copy I/O practice in project</h2><p>Recently weeks, I was working on how to exploit the potentialities with the GMAC(1G Ethernet Media Access Controller)  on the SoC in my desktop. This SoC was used in the telecommunication field which provide the fast-transfer-data capability with some interesting MAC features. In this article, I had like share some experiences on how to utilize this MAC achieving better network throughput during this work.</p>
