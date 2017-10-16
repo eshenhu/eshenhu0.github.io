@@ -5,7 +5,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://eshenhu.github.io/"/>
-  <updated>2017-06-26T15:43:14.000Z</updated>
+  <updated>2017-10-16T15:45:40.000Z</updated>
   <id>https://eshenhu.github.io/</id>
   
   <author>
@@ -14,6 +14,81 @@
   </author>
   
   <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>system test thoughts</title>
+    <link href="https://eshenhu.github.io/2017/08/16/System-test-thoughts/"/>
+    <id>https://eshenhu.github.io/2017/08/16/System-test-thoughts/</id>
+    <published>2017-08-16T15:33:10.000Z</published>
+    <updated>2017-10-16T15:45:40.000Z</updated>
+    
+    <content type="html"><![CDATA[<h1 id="谈谈如何有效的测量系统负载和响应"><a href="#谈谈如何有效的测量系统负载和响应" class="headerlink" title="谈谈如何有效的测量系统负载和响应"></a>谈谈如何有效的测量系统负载和响应</h1><p>嵌入式系统在系统测试过程中往往需要进行 Stability, Robustness, Accessbility, Responsibility 等等系统测试. 以来保证系统的功能完整性和健壮性. </p>
+<p>嵌入式系统在设计在立项阶段会给出一个设计目标, 比如一款路由器，往往会给出以下类似的要求:</p>
+<ul>
+<li>支持 802.11n/g/a/b 支持.</li>
+<li>支持 2.4G, 5G 双频.</li>
+<li>最大速率支持 (450Mbps).</li>
+<li>…</li>
+</ul>
+<p>作为系统设计者,需要在设计阶段锚定这些目标进行技术选型. 如果当前有类似产品设计经验, 可以借鉴之前的经验进行选型. 如果是第一次设计, 保守的做法便是借鉴其他厂商的方案, 等待自己对系统了解的加深和经验的丰富再进行下一阶段的开发. </p>
+<p>无论以什么方式开局, 一个 ·能用· ·易用· ·好用· 的测试环境是必须要在第一时间阶段准备, 才能应对产品开发阶段的各项挑战.</p>
+<p>结合我手中的几个项目, 想谈谈自己的一点关于系统测试的看法.</p>
+<a id="more"></a>
+<ul>
+<li><p>XXX 4G 路由器</p>
+<p>此产品是利用有线宽带做接入网络,使用4G信号进行无线传输的无线设备. 设备立项阶段的设计目标为:</p>
+<ul>
+<li>最大支持32用户.</li>
+<li>上下行最高速率支持150Mbps.</li>
+<li>支持IpSec传输.</li>
+<li>支持Cwmp集中管理以及本地管理.</li>
+<li>支持自开站和自优化功能.</li>
+</ul>
+<p>此项目是在之前已有的平台移植进行二次开发,成立之初就发现之前单元/系统测试的极大问题. 主要暴漏在:</p>
+<ul>
+<li>版本迭代过程中没有良好的回归测试覆盖. 历史版本中大量出现解决一个问题又引入新问题的commit. </li>
+<li>系统测试没有自动化实践. 完全是靠人力进行弥补, 导致产品开发周期变长, 解决问题回溯历史时间很长.</li>
+<li>有关系统测试的概念不清, 只关注功能实现而忽略了系统的性能.</li>
+</ul>
+<p>这里只对最后一项进行一些实践说明,怎么才能提高产品的系统性能.</p>
+<p>之前产品有系统负载的测量, 主要关注在某个系统模拟负载情况下的CPU/MEMORY的性能. 但是没有对系统的整体性能进行测量. </p>
+<h2 id="为什么？"><a href="#为什么？" class="headerlink" title="为什么？"></a>为什么？</h2><ul>
+<li>系统是一个软实时的设备,每个TTI(1ms)进行用户的调度,如果没有及时调度用户,会发生速率变低, 对时延敏感的响应降低. 所以需要在系统测试中加入不同模拟负载下用户的调度响应时间.</li>
+<li>CPU 的利用率仅仅描述了CPU一段时间的繁忙程度, 不能够反映系统的响应. 所以需要对实时的进程进行测量, 比如当前设备运行 的 MAC, PHY 实体都是对实时性要求最高的功能实体, 需要对两者之间消息处理的时间进行监控.</li>
+<li>从用户角度出发, 需要监控从尝试接入到接入成功的时间响应, 此时间可以从另外一个维度进行系统的性能测量.</li>
+</ul>
+</li>
+</ul>
+<h2 id="问题发现"><a href="#问题发现" class="headerlink" title="问题发现"></a>问题发现</h2><h3 id="PHY-STOP"><a href="#PHY-STOP" class="headerlink" title="PHY STOP"></a>PHY STOP</h3><p>使用iPerf进行速率测试业务过程中,32UE情况下偶然会出现PHY STOP.</p>
+<h4 id="原因"><a href="#原因" class="headerlink" title="原因"></a>原因</h4><p>MAC-PHY之间有3 TTI为时间窗口作为缓冲, 如果在 3ms 之内能够同步成功, 消息既可以满足要求. 如果某个时刻未能满足这个需求, 短时间内会造成速率下降, 长时间就会出现不同步现象 PHY 就会自动 STOP.</p>
+<h4 id="分析"><a href="#分析" class="headerlink" title="分析"></a>分析</h4><p>使用 ftrace 分析sche info发现, MAC进程会被 IO 切换, 查看分析文件发现, MAC某处使用syslog 打印信息, syslog 默认使用本地514端口做UDP报文, 一旦超过 系统 max_tranmit_message 的容量限制, 便会成为阻塞操作, 等待 syslogd 处理消息完毕. 但是syslogd 优先级为 20的正常优先级, 即为还没有处理完socket 的内容就立刻被抢占, 导致MAC吞吐率下降.</p>
+<p>后改为自定义的日志处理系统, 可以改善这个情况.</p>
+<h4 id="测试跟进"><a href="#测试跟进" class="headerlink" title="测试跟进"></a>测试跟进</h4><p>CII增加MAC-PHY消息处理响应,每周版本做跟踪处理.</p>
+<h3 id="IpSec-影响"><a href="#IpSec-影响" class="headerlink" title="IpSec 影响"></a>IpSec 影响</h3><p>IpSec 开启后系统性能下降严重.</p>
+<h4 id="现象"><a href="#现象" class="headerlink" title="现象"></a>现象</h4><p>IpSec 启用后系统性能对比未使用是无论是吞吐量还是响应时间都有很大的degradation.</p>
+<h4 id="原因-1"><a href="#原因-1" class="headerlink" title="原因"></a>原因</h4><p>根据ftrace 打点分析, 在ipsec 同步加密数据阶段, 消耗了太多的cpu cycle. 使得系统负载升高.</p>
+<h4 id="解决"><a href="#解决" class="headerlink" title="解决"></a>解决</h4><p>使用硬件提供的协处理器进行硬件加解密功能, 降低CPU使用率. 使用 zero-copy 框架进行进一步优化.</p>
+<h4 id="测试跟进-1"><a href="#测试跟进-1" class="headerlink" title="测试跟进"></a>测试跟进</h4><p>对报文在各功能实体模块之间进行打点记录,每周的系统测试记录详细数据.</p>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h1 id=&quot;谈谈如何有效的测量系统负载和响应&quot;&gt;&lt;a href=&quot;#谈谈如何有效的测量系统负载和响应&quot; class=&quot;headerlink&quot; title=&quot;谈谈如何有效的测量系统负载和响应&quot;&gt;&lt;/a&gt;谈谈如何有效的测量系统负载和响应&lt;/h1&gt;&lt;p&gt;嵌入式系统在系统测试过程中往往需要进行 Stability, Robustness, Accessbility, Responsibility 等等系统测试. 以来保证系统的功能完整性和健壮性. &lt;/p&gt;
+&lt;p&gt;嵌入式系统在设计在立项阶段会给出一个设计目标, 比如一款路由器，往往会给出以下类似的要求:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;支持 802.11n/g/a/b 支持.&lt;/li&gt;
+&lt;li&gt;支持 2.4G, 5G 双频.&lt;/li&gt;
+&lt;li&gt;最大速率支持 (450Mbps).&lt;/li&gt;
+&lt;li&gt;…&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;作为系统设计者,需要在设计阶段锚定这些目标进行技术选型. 如果当前有类似产品设计经验, 可以借鉴之前的经验进行选型. 如果是第一次设计, 保守的做法便是借鉴其他厂商的方案, 等待自己对系统了解的加深和经验的丰富再进行下一阶段的开发. &lt;/p&gt;
+&lt;p&gt;无论以什么方式开局, 一个 ·能用· ·易用· ·好用· 的测试环境是必须要在第一时间阶段准备, 才能应对产品开发阶段的各项挑战.&lt;/p&gt;
+&lt;p&gt;结合我手中的几个项目, 想谈谈自己的一点关于系统测试的看法.&lt;/p&gt;
+    
+    </summary>
+    
+    
+  </entry>
   
   <entry>
     <title>Some thoughts about memory issue</title>
