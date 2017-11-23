@@ -5,7 +5,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://eshenhu.github.io/"/>
-  <updated>2017-10-16T15:45:40.000Z</updated>
+  <updated>2017-11-23T13:23:38.000Z</updated>
   <id>https://eshenhu.github.io/</id>
   
   <author>
@@ -14,6 +14,73 @@
   </author>
   
   <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>Fast logging system in embedded system</title>
+    <link href="https://eshenhu.github.io/2017/10/23/Fast-logging-system-in-embedded-system/"/>
+    <id>https://eshenhu.github.io/2017/10/23/Fast-logging-system-in-embedded-system/</id>
+    <published>2017-10-23T13:04:42.000Z</published>
+    <updated>2017-11-23T13:23:38.000Z</updated>
+    
+    <content type="html"><![CDATA[<h1 id="Fast-logging-system-in-embedded-system"><a href="#Fast-logging-system-in-embedded-system" class="headerlink" title="Fast logging system in embedded system"></a>Fast logging system in embedded system</h1><hr>
+<p>[TOC]</p>
+<h2 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h2><p>FLOG is a light-weight logging system which has features like, high throughput, non-blocking and lock-less write from different process, crash save in field. It is suitable for the embedded system using Linux system.</p>
+<h2 id="Log-VS-Trace"><a href="#Log-VS-Trace" class="headerlink" title="Log VS. Trace"></a>Log VS. Trace</h2><p><strong>Log</strong> was used as recording the activity on subsystem, it provide the activity information to the system administrator or operator to give them a preview on the activity. such as booting information when kernel boot, plug-in-plug-out event popup by kernel.</p>
+<img src="/2017/10/23/Fast-logging-system-in-embedded-system/log_sample.png" alt="Picture-01" title="Picture-01">
+<p><strong>Trace</strong> was used as recording detailed information on specified system, its main purpose is used as tracking the detail into this system, the output which it generate was used by programmer to analysis what is going on when some problem happened. In common occurrence, it only be requested when system was not working as expected, such as the throughput was not reached into the theory level in wireless card, etc.</p>
+<a id="more"></a>
+<h2 id="Current-status"><a href="#Current-status" class="headerlink" title="Current status"></a>Current status</h2><p>For most products working in the embedded Linux, they always use <code>syslogd</code> or <code>rsyslogd</code> as their logging system, but actually, those daemon was designed to use as system logging such as events or activity generating from subsystem instead of recording log requiring high throughput such as tracing the detailed internal activity. </p>
+<h3 id="What-it-will-be-happened-if-use-them"><a href="#What-it-will-be-happened-if-use-them" class="headerlink" title="What it will be happened if use them?"></a>What it will be happened if use them?</h3><p>If you use <code>syslogd</code> or <code>rsyslogd</code> as tracing work in local host, the process use them record the log via local file socket. even you redirect the log to the remote logging workstation, it use a UDP socket to send the log. If the tracing point was laid where the event happened on each per tti(1ms) kicked, then the following aspects you need to know:</p>
+<ul>
+<li>Though you can use un-blocking send()/sendto()/sendmsg() on socket, but sending buffer has size limit on socket (sysconf(), you can get them from /proc/net/….), once the buffer was reached this limit, the send() operation will return fail as reason of buffer was overflow or get blocked (if you config the socket properties) then it get switched by scheduler.</li>
+<li>Though <code>syslogd</code> will get schedule in time-slice scheduler pattern. but this daemon always work as low-priority process level with 20(nomal process level), you can reassigned this priority to a higher value, but you will get performance penalty in real-time system as nobody want a logging daemon break their performance.</li>
+<li>Then the daemon will get scheduled when user application blocked by <code>send()</code> operation, in that time, it need to fetch many UDP message from skb buffer and write them into file, but in the other hand, it will be unintended interrupted by other processes with higher priority than him. So, the throughput will be dramatically decreased into a low level or even lead to unstable on the whole system.</li>
+</ul>
+<img src="/2017/10/23/Fast-logging-system-in-embedded-system/syslogd.png" alt="Picture-02" title="Picture-02">
+<p>In one of wireless router project, the engineer use <code>syslogd</code> to dump the internal operations per TTI(1ms), about 5 min later, the PHY-MAC can’t meet the minimum requirement of sync, then the whole system will down sooner.</p>
+<h2 id="How-flog-aim-at"><a href="#How-flog-aim-at" class="headerlink" title="How flog aim at?"></a>How flog aim at?</h2><p>FLOG, want to address the problem above, and more than that:</p>
+<ul>
+<li>High throughput.</li>
+<li>Non blocking logging operation (try its best).</li>
+<li>No system call penalty. </li>
+<li>Ability to be used by thread in either user-space level or kernel module.</li>
+<li>Ability to work in multi processes environment.</li>
+<li>Ability to redirect to remote machine.(not implemented now)</li>
+<li>Compatible with Syslog format.</li>
+<li>Provide far more control on filter in user space.</li>
+<li>Discard message if it had to do that.</li>
+</ul>
+<h2 id="Internal-design"><a href="#Internal-design" class="headerlink" title="Internal design"></a>Internal design</h2><img src="/2017/10/23/Fast-logging-system-in-embedded-system/arch.png" alt="Picture-03" title="Picture-03">
+<h3 id="no-system-call-user-space-operation"><a href="#no-system-call-user-space-operation" class="headerlink" title="no system call, user space operation"></a>no system call, user space operation</h3><p>For simplify, FLOG try its best NOT use system call for better performance.<br>The processes running in embedded system normally get signed by the publisher, and the binary get verified by the system during booting procedure, so we think all the binary running on the embedded system are reliable and safety.<br>With this guarantee, we create a new character device named <code>rdev</code> which reserved a range of space from boot args.<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div></pre></td><td class="code"><pre><div class="line">bootargs:</div><div class="line">root=/dev/mtdblock8 rw rootfstype=jffs2 mem=512M rram_size=8M ...</div></pre></td></tr></table></figure></p>
+<p>Considering of the characteristic of this device named <code>rdev</code>which has no hot spot write/read from this memory, after full evaluation, this range of memory was config with no any L1/L2 cache.</p>
+<p>Then, during the booting time, we have to reserve this range of  space with <code>request_mem_region</code>, and followed by <code>ioremap_nocache</code> to create the PG table for this device.</p>
+<p>Device driver accept the configurable parameter for the <strong>size</strong> of this region, 8M as the default value.</p>
+<p>A little trick was here, as normal operation, application in user space will use <code>mmap</code> map this region to its own space area, but it would be noisy if every process who use <code>flog</code> will do such job, and occupy some virtual address space for the same physical space range. For saving the memory address space in each process, the device driver of <code>rdev</code> reassign the PG table permission attribute with <em>USER_ACCESS</em>, then it means every process can directly write or read the contents with the same PG tables. As we mentioned above, security is not a problem here as we trust every process running on this system.</p>
+<img src="/2017/10/23/Fast-logging-system-in-embedded-system/virtual_space.png" alt="Picture-04" title="Picture-04">
+<h3 id="dual-ring-buffer-design"><a href="#dual-ring-buffer-design" class="headerlink" title="dual ring buffer design"></a>dual ring buffer design</h3><p>Flog try its best not introduce any lock schematic into design as the lock will occasionally dramatic decrease the whole performance, it rather select to discard some message if too much message was flooded into the flog. </p>
+<p>Dual-Ring-Buffer design is the answer to this challenge.</p>
+<p>Multi-Log-Producer use lock-less list to update the internal structure of the working <code>BANK</code>, which won’t bother each other. </p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div><div class="line">13</div><div class="line">14</div><div class="line">15</div><div class="line">16</div><div class="line">17</div><div class="line">18</div><div class="line">19</div></pre></td><td class="code"><pre><div class="line">flog_write(msg)</div><div class="line">&#123;</div><div class="line">	<span class="comment">// calculate the size of writing message.</span></div><div class="line">	<span class="keyword">int</span> n = <span class="built_in">snprintf</span>(<span class="literal">NULL</span>, <span class="number">0</span>, ...);</div><div class="line">	<span class="comment">// get the current_bank from `segment header` and check the r/w lock bit whether or not busy updated by rlog_thread.</span></div><div class="line">	<span class="comment">//IF YES:</span></div><div class="line">	<span class="comment">//   Atomic switch to another bank, return back to the header in that bank;</span></div><div class="line">	<span class="comment">//ELSE:</span></div><div class="line">	<span class="comment">//    return back the header in the current bank;</span></div><div class="line">	<span class="comment">//END</span></div><div class="line">	current_bank = find_free_bank();</div><div class="line">	<span class="comment">// it should consider the round-again situation, I don't express it here for simplify.</span></div><div class="line">    atomic_set(current_bank_header, current_bank_header + align_address(n, <span class="number">4</span>));</div><div class="line">    atomic_set(message_header_rwlock);</div><div class="line">    <span class="built_in">snprintf</span>(message_header_ptr, msg, ...);</div><div class="line">    atomic_clr(message_header_rwlock);</div><div class="line">    <span class="comment">//Inform daemon process if the whole size exceed the config size. F.g. 2MB</span></div><div class="line">    flog_update_bank_write_size();</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>elog demon process is the consumer process which dump the message in the raw into the disk, which was boot when whole system boot like <code>syslogd</code>. It read the configuration file under <code>/etc/flog.conf</code> directory. You can make it into effect with those parameters dynamically.<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div></pre></td><td class="code"><pre><div class="line">flog.dirty_background_ratio = 50  //50% means half message full reached</div><div class="line">flog.dirty_interval_centisecs = 500  //ms</div><div class="line">flog.rolling_file_size = 4 // Mega size</div></pre></td></tr></table></figure></p>
+<h3 id="flog-kernel-module"><a href="#flog-kernel-module" class="headerlink" title="flog kernel module"></a>flog kernel module</h3><p> This flog kernel module mainly change the permission of PG tables,  in my init version, the flush task was assigned into the kthread started in kernel, but it has some drawbacks.</p>
+<h3 id="multi-core-deployment"><a href="#multi-core-deployment" class="headerlink" title="multi-core deployment"></a>multi-core deployment</h3><p>Multi-core processors are more popular now, it is preferred that the <code>flog</code> should be deployed with different core with another where the CPU-intensive task located. The final test result show in the multi-core env, the occurrence of discarding message have a great decreased.</p>
+<h2 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h2><p>In the wireless device, we often need to record the scheduler information in MAC per TTI(1ms), this requirement give us <em>BIG</em> challenge on the performance of logging system.  Facts proves the legacy tools used for <code>log</code> like <code>syslogd</code> <code>rsyslogd</code> can’t meet this requirement.</p>
+<p>After a period of evaluation, this <code>flog</code> make impressive performance to other solution, later i will give some comparison between <code>flog</code> and <code>syslogd</code> and <code>rsyslogd</code>.</p>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h1 id=&quot;Fast-logging-system-in-embedded-system&quot;&gt;&lt;a href=&quot;#Fast-logging-system-in-embedded-system&quot; class=&quot;headerlink&quot; title=&quot;Fast logging system in embedded system&quot;&gt;&lt;/a&gt;Fast logging system in embedded system&lt;/h1&gt;&lt;hr&gt;
+&lt;p&gt;[TOC]&lt;/p&gt;
+&lt;h2 id=&quot;Introduction&quot;&gt;&lt;a href=&quot;#Introduction&quot; class=&quot;headerlink&quot; title=&quot;Introduction&quot;&gt;&lt;/a&gt;Introduction&lt;/h2&gt;&lt;p&gt;FLOG is a light-weight logging system which has features like, high throughput, non-blocking and lock-less write from different process, crash save in field. It is suitable for the embedded system using Linux system.&lt;/p&gt;
+&lt;h2 id=&quot;Log-VS-Trace&quot;&gt;&lt;a href=&quot;#Log-VS-Trace&quot; class=&quot;headerlink&quot; title=&quot;Log VS. Trace&quot;&gt;&lt;/a&gt;Log VS. Trace&lt;/h2&gt;&lt;p&gt;&lt;strong&gt;Log&lt;/strong&gt; was used as recording the activity on subsystem, it provide the activity information to the system administrator or operator to give them a preview on the activity. such as booting information when kernel boot, plug-in-plug-out event popup by kernel.&lt;/p&gt;
+&lt;img src=&quot;/2017/10/23/Fast-logging-system-in-embedded-system/log_sample.png&quot; alt=&quot;Picture-01&quot; title=&quot;Picture-01&quot;&gt;
+&lt;p&gt;&lt;strong&gt;Trace&lt;/strong&gt; was used as recording detailed information on specified system, its main purpose is used as tracking the detail into this system, the output which it generate was used by programmer to analysis what is going on when some problem happened. In common occurrence, it only be requested when system was not working as expected, such as the throughput was not reached into the theory level in wireless card, etc.&lt;/p&gt;
+    
+    </summary>
+    
+    
+  </entry>
   
   <entry>
     <title>system test thoughts</title>
