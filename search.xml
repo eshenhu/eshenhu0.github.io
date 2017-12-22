@@ -3,8 +3,55 @@
   
     
     <entry>
+      <title><![CDATA[Build service with SOA in Openwrt]]></title>
+      <url>/2017/11/22/Build-service-with-SOA-in-Openwrt/</url>
+      <content type="html"><![CDATA[<p>In one of internal technical review meeting, the coder integrate the service into a existed substance/service, but considering of the scalability of this service, I strongly recommended the developer decouple this service from any substance and made them into a self-contained substance in order to provide the service to more clients in the future. </p>
+<p>##SOA in practice<br> In the wikipedia <a href="https://en.wikipedia.org/wiki/Service-oriented_architecture" target="_blank" rel="external">page</a>, SOA was needed to meet the following basic rules.</p>
+<blockquote>
+<p>A service has four properties according to one of many definitions of SOA:</p>
+<ul>
+<li>It logically represents a business activity with a specified outcome.</li>
+<li>It is self-contained.</li>
+<li>It is a black box for its consumers.</li>
+<li>It may consist of other underlying services.</li>
+</ul>
+</blockquote>
+<p>In the resource-limited SoC, it maybe not practical to deploy individual service with one standalone process,  but it will be possible deploying partly/all services in one process and multiplexed the service using the different domain/interface id.<br><a id="more"></a></p>
+<h2 id="ubus-in-Openwrt"><a href="#ubus-in-Openwrt" class="headerlink" title="ubus in Openwrt"></a>ubus in Openwrt</h2><p><a href="https://wiki.openwrt.org/doc/techref/ubus" target="_blank" rel="external">ubus</a> is an daemon process for other process/daemons to register themselfs as well as sending messages. The interface is implemented using Unix sockets and use TLV(type-length-value) messages.</p>
+<p>Just for example:</p>
+<p>By default, list all namespaces registered with the RPC server:<br><figure class="highlight shell"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div></pre></td><td class="code"><pre><div class="line">root@uplink:~# ubus list</div><div class="line">network</div><div class="line">network.device</div><div class="line">network.interface.lan</div><div class="line">network.interface.loopback</div><div class="line">network.interface.wan</div><div class="line">root@uplink:~#</div></pre></td></tr></table></figure></p>
+<p>If invoked with -v, the procedures and their argument signatures are dumped in addition to the namespace path:<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div></pre></td><td class="code"><pre><div class="line">root@uplink:~# ubus -v list network.interface.lan</div><div class="line">&apos;network.interface.lan&apos; @099f0c8b</div><div class="line">	&quot;up&quot;: &#123;  &#125;</div><div class="line">	&quot;down&quot;: &#123;  &#125;</div><div class="line">	&quot;status&quot;: &#123;  &#125;</div><div class="line">	&quot;prepare&quot;: &#123;  &#125;</div><div class="line">	&quot;add_device&quot;: &#123; &quot;name&quot;: &quot;String&quot; &#125;</div><div class="line">	&quot;remove_device&quot;: &#123; &quot;name&quot;: &quot;String&quot; &#125;</div><div class="line">	&quot;notify_proto&quot;: &#123;  &#125;</div><div class="line">	&quot;remove&quot;: &#123;  &#125;</div><div class="line">	&quot;set_data&quot;: &#123;  &#125;</div><div class="line">root@uplink:~#</div></pre></td></tr></table></figure></p>
+<p>Besides, <code>ubusd</code> define others message handlers as followings:<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div><div class="line">12</div></pre></td><td class="code"><pre><div class="line">static const ubus_cmd_cb handlers[__UBUS_MSG_LAST] = &#123;  </div><div class="line">[UBUS_MSG_PING] = ubusd_send_pong,  </div><div class="line">[UBUS_MSG_ADD_OBJECT] = ubusd_handle_add_object,  </div><div class="line">[UBUS_MSG_REMOVE_OBJECT] = ubusd_handle_remove_object,  </div><div class="line">[UBUS_MSG_LOOKUP] = ubusd_handle_lookup,  </div><div class="line">[UBUS_MSG_INVOKE] = ubusd_handle_invoke,  </div><div class="line">[UBUS_MSG_STATUS] = ubusd_handle_response,  </div><div class="line">[UBUS_MSG_DATA] = ubusd_handle_response,  </div><div class="line">[UBUS_MSG_SUBSCRIBE] = ubusd_handle_add_watch,  </div><div class="line">[UBUS_MSG_UNSUBSCRIBE] = ubusd_handle_remove_watch,  </div><div class="line">[UBUS_MSG_NOTIFY] = ubusd_handle_notify,  </div><div class="line">&#125;;</div></pre></td></tr></table></figure></p>
+<h3 id="how-ubus-works"><a href="#how-ubus-works" class="headerlink" title="how ubus works"></a>how ubus works</h3><p>The following picture demonstrate the interactive between <code>ubus client 1</code> and <code>ubus client 2</code>.<br><code>ubus client 1</code> register two <code>namespace</code> towards <code>ubusd</code>. In the namespace <code>interface</code>, there are 2 methods <strong>getlanip</strong> and <strong>setlanip</strong> for accepting the external actions. </p>
+<img src="/2017/11/22/Build-service-with-SOA-in-Openwrt/sample1.png" alt="Picture-01" title="Picture-01">
+<p>The <code>client</code> can <strong>notify</strong> all the subscribed clients if the proper event in <code>client</code> need to broadcast.</p>
+<h2 id="Practice"><a href="#Practice" class="headerlink" title="Practice"></a>Practice</h2><p><code>License</code> service is a service which provide license information like “what licenses was installed? what capacity did one specified license have?”, and if the license was expired, <code>license</code>service need notify this change to the client, as well as when new license was added.<br>In summary, <code>License</code> service need provide such kinds of services:</p>
+<ol>
+<li>Get: <ul>
+<li>Service is ready or not.</li>
+<li>Client can query detailed information on one/several license(s).</li>
+</ul>
+</li>
+<li>Set:<ul>
+<li>Add/Remove a license file.</li>
+</ul>
+</li>
+<li>Notify:<ul>
+<li>Notify all the registed client(s) about the changes.</li>
+</ul>
+</li>
+</ol>
+<img src="/2017/11/22/Build-service-with-SOA-in-Openwrt/sample2.png" alt="Picture-02" title="Picture-02">
+<p>During the booting time, <code>coordinator</code> need to start the service firstly, and confirm it’s status is READY, then booting other substances. Each substance need register themselves to the <code>service</code>, some substances only get the license info which they care about, and ready to receive the changes on these licenses.</p>
+<p>##END<br>It seems like <code>ubus</code> can’t good support the multi-thread environment, after checking the source code, it was found that it use some global variable to store the value. It need to be re-constructed if used in the multi-thread env.</p>
+]]></content>
+      
+        
+    </entry>
+    
+    <entry>
       <title><![CDATA[Design a license system in embedded system]]></title>
-      <url>/2017/12/22/Design-a-license-system-in-embedded-system/</url>
+      <url>/2017/11/02/Design-a-license-system-in-embedded-system/</url>
       <content type="html"><![CDATA[<blockquote>
 <p><code>License</code> was widely used on many software/hardware area, such as Microsoft Windows Series, which use dedicated hardware to store their key and other information to verify the booting OS is legal or not. Dell or EMC or Oracle Database use license to limit how many HW resource can be used. So, <code>license</code> system is an valuable assert to the company as it can bring the direct profit.</p>
 </blockquote>
@@ -25,7 +72,7 @@
 </ul>
 <h2 id="Store-the-public-key"><a href="#Store-the-public-key" class="headerlink" title="Store the public key"></a>Store the public key</h2><p>ARM based SoC provide <code>TrustZone</code> tech to the end-user, It use hardware-based hypervisor to run two VMs in one SoC. The software running in the <code>TrustZone</code> protected zone was only allowed by the release company, which means any software which want to run in <code>TrustZone</code> area must get signed by the SoC company.<br>Technically, the <code>TrustZone</code> is the more safe method to store the key and other security information, even in the Motorola smartphone, the cracker success bypassing the protection of the <code>TrustZone</code> <a href="https://www.xda-developers.com/qualcomm-snapdragon-845-secure-processing-unit/" target="_blank" rel="external">link</a> The latest <code>HuaWei</code> smartphone claim they can replace the hardware token released by the BANK in their device when do some money transition, they all use <code>TrustZone</code> tech.  The latest Qualcomm use their own property SPC instead of ARM <code>trustzone</code> to store such security information.<br>But it will be BIG for us if we only want to store a key or some unique number on the SoC using <code>TrustZone</code> as there are no requirement that the app running in the SoC need or less need to store their per-app key into system.<br>As an alternative, In most SoC, there is an OTP(on-time-programming) area in the system, many SoC has such kind of area in their design, such as <code>efuse</code> area in Intel platform, <code>qfuse</code> area in Qualcomm platform, even some FLASH manufacture (Macro) make some area for such usage, but if some old device or the latest device which don’t consider such requirement in advance don’t have any such kind area with such attribute, how to handle such issues?<br>My suggestion is use one series of non-modifiable code (make some confusion work on this code) (unique ID include your CPU ID, etc)to sign your public key file, this method can protect you in some certain range.</p>
 <p>The whole procedure will be like:</p>
-<img src="/2017/12/22/Design-a-license-system-in-embedded-system/sample.png" alt="Picture-01" title="Picture-01">
+<img src="/2017/11/02/Design-a-license-system-in-embedded-system/sample.png" alt="Picture-01" title="Picture-01">
 <h2 id="Manage-the-private-key"><a href="#Manage-the-private-key" class="headerlink" title="Manage the private key"></a>Manage the private key</h2><p>As time intensity,  I select the <a href="https://www.hashicorp.com/products/vault" target="_blank" rel="external">Vault</a> to manage the private key, and wrote the back-end license generating tools using Go. We define the 2 different role on managing/using the private key. </p>
 <ul>
 <li>Administrator (who can generate the new pair key and revoke the key)</li>
