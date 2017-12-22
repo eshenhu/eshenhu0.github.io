@@ -5,7 +5,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://eshenhu.github.io/"/>
-  <updated>2017-11-23T13:23:38.000Z</updated>
+  <updated>2017-12-22T00:21:42.000Z</updated>
   <id>https://eshenhu.github.io/</id>
   
   <author>
@@ -14,6 +14,78 @@
   </author>
   
   <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>Design a license system in embedded system</title>
+    <link href="https://eshenhu.github.io/2017/12/22/Design-a-license-system-in-embedded-system/"/>
+    <id>https://eshenhu.github.io/2017/12/22/Design-a-license-system-in-embedded-system/</id>
+    <published>2017-12-22T00:14:55.000Z</published>
+    <updated>2017-12-22T00:21:42.000Z</updated>
+    
+    <content type="html"><![CDATA[<blockquote>
+<p><code>License</code> was widely used on many software/hardware area, such as Microsoft Windows Series, which use dedicated hardware to store their key and other information to verify the booting OS is legal or not. Dell or EMC or Oracle Database use license to limit how many HW resource can be used. So, <code>license</code> system is an valuable assert to the company as it can bring the direct profit.</p>
+</blockquote>
+<h2 id="Aspects-when-designing-license-system"><a href="#Aspects-when-designing-license-system" class="headerlink" title="Aspects when designing license system"></a>Aspects when designing license system</h2><ul>
+<li>Security</li>
+<li>Compatible </li>
+</ul>
+<h2 id="Background"><a href="#Background" class="headerlink" title="Background"></a>Background</h2><p>In common, the company would like to design a universal HW platform to carry on different requirements with the reason of decreasing the complex of BOM, leverage the cost on HW expense, etc. In order to make more profit on a universal hardware platform, then you need a license system to give the right authority to your sales/customer. For example, in the wireless system, some company would like sale the HW without any charge or very low price, but those HW only can carry on low volume data/service in the <code>BASIC</code> state, f.g. LTE station in <code>BASIC</code> mode only can take 16 Users in one BST,  a limited throughput, a limited Cells can be setup. Basically,  you had to buy a suitable license paper meeting your requirement, just like the menu in the restaurant, you can’t image how many menus did the company make ready for you.<br>In one word, License can make money!!!</p>
+<a id="more"></a>
+<h2 id="License-file-structure"><a href="#License-file-structure" class="headerlink" title="License file structure"></a>License file structure</h2><p>I suppose the company had already made through on what functionality can be made into <code>license</code>, then a license list need to be properly designed with readable language and description.<br>XML will be the good choice to record such list. Some necessary element in this XML should include:</p>
+<ul>
+<li>License Name</li>
+<li>License Number (unique number among the license)</li>
+<li>License Signed Date (2017-10-05)</li>
+<li>License period of validity (2017-10-05 — 2018-10-05)</li>
+<li>License specify contents (this will be specified according to each license with nested XML representation)</li>
+<li>Encrypted signed message using the PK(private key) to protect the integrity and security of license message</li>
+</ul>
+<h2 id="Store-the-public-key"><a href="#Store-the-public-key" class="headerlink" title="Store the public key"></a>Store the public key</h2><p>ARM based SoC provide <code>TrustZone</code> tech to the end-user, It use hardware-based hypervisor to run two VMs in one SoC. The software running in the <code>TrustZone</code> protected zone was only allowed by the release company, which means any software which want to run in <code>TrustZone</code> area must get signed by the SoC company.<br>Technically, the <code>TrustZone</code> is the more safe method to store the key and other security information, even in the Motorola smartphone, the cracker success bypassing the protection of the <code>TrustZone</code> <a href="https://www.xda-developers.com/qualcomm-snapdragon-845-secure-processing-unit/" target="_blank" rel="external">link</a> The latest <code>HuaWei</code> smartphone claim they can replace the hardware token released by the BANK in their device when do some money transition, they all use <code>TrustZone</code> tech.  The latest Qualcomm use their own property SPC instead of ARM <code>trustzone</code> to store such security information.<br>But it will be BIG for us if we only want to store a key or some unique number on the SoC using <code>TrustZone</code> as there are no requirement that the app running in the SoC need or less need to store their per-app key into system.<br>As an alternative, In most SoC, there is an OTP(on-time-programming) area in the system, many SoC has such kind of area in their design, such as <code>efuse</code> area in Intel platform, <code>qfuse</code> area in Qualcomm platform, even some FLASH manufacture (Macro) make some area for such usage, but if some old device or the latest device which don’t consider such requirement in advance don’t have any such kind area with such attribute, how to handle such issues?<br>My suggestion is use one series of non-modifiable code (make some confusion work on this code) (unique ID include your CPU ID, etc)to sign your public key file, this method can protect you in some certain range.</p>
+<p>The whole procedure will be like:</p>
+<img src="/2017/12/22/Design-a-license-system-in-embedded-system/sample.png" alt="Picture-01" title="Picture-01">
+<h2 id="Manage-the-private-key"><a href="#Manage-the-private-key" class="headerlink" title="Manage the private key"></a>Manage the private key</h2><p>As time intensity,  I select the <a href="https://www.hashicorp.com/products/vault" target="_blank" rel="external">Vault</a> to manage the private key, and wrote the back-end license generating tools using Go. We define the 2 different role on managing/using the private key. </p>
+<ul>
+<li>Administrator (who can generate the new pair key and revoke the key)</li>
+<li>Operator(who can use the back-end tools to generate the license key)<br>As the Operator has no authority to see the private key, then it guarantee the security on generating the license file.</li>
+</ul>
+<h2 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h2><p>Actually,  the cracker still has many path to crack this license system, like searching the public API nm string in the binary code and do the binary translate work or code injection, modifying the contents if you put some sensitive contents into fixed address in ram. etc.</p>
+<p>So, it need programmer know some basic knowledge when they work on the sensitive information, don’t store such information in fixed address area, try to use stack or do some confusion work on such information.</p>
+<p>It is better read/care the latest security information released in the public, and make your defend with much consideration.</p>
+<p>##–Continued<br>Finally, after some discussion with other guys working in Standard Organization, they recommended to fully meet the requirement of the 3GPP <a href="http://www.etsi.org/deliver/etsi_ts/133300_133399/133320/09.05.00_60/ts_133320v090500p.pdf" target="_blank" rel="external">TS133.320</a>.<br>This specification defines a Trusted Environment(TrE) to perform sensitive functions and store sensitive data. This data must be unknowable to unauthorized entities.<br>Some requirements follows:</p>
+<ul>
+<li>The TrE must be built from a hardware root of trust.</li>
+<li>The Integrity of the TrE must be verified during the boot process.</li>
+<li>The TrE must verify the integrity of the rest of the system software.</li>
+<li>The TrE must perform the required sensitive functions to validate the device and device integrity.</li>
+<li>The TrE must perform the required sensitive functions to authenticate the device with the operator network.</li>
+<li>…</li>
+</ul>
+<p>So, if we fully support this standard, then we need the help of the <code>TrustZone</code>, where we build the TrE for the eNodeB.</p>
+<ul>
+<li>The HNB’s identity (SN) shall be stored in the TrE and shall not be modifiable. (it was wrote during the production with a stardard)</li>
+<li>The HNB’s private key shall be stored in the TrE and shall not be exposed outside of the TrE. (private key was used on such like IPSEC procedure)</li>
+<li>The root certificate used to verify the signatures on the SeGW certificate shall be stored in the TrE and shall be writable by authorized access only. The verification process for signatures shall be performed by the HNB’s TrE. (this related to the revoking work)</li>
+<li>The HNB’s TrE shall be used to compute the AUTH payload used during the IKE_AUTH request message exchanges.</li>
+</ul>
+<p>We are now evaluating the <a href="https://www.op-tee.org" target="_blank" rel="external">OP-TEE</a> in our product, I will make another blog on this work.</p>
+<p>Here is a good representation on the <a href="https://www.linuxplumbersconf.org/2016/ocw/system/presentations/3675/original/LPC%202016%20-%20OP-TEE.pdf" target="_blank" rel="external">OP-TEE</a>.</p>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;blockquote&gt;
+&lt;p&gt;&lt;code&gt;License&lt;/code&gt; was widely used on many software/hardware area, such as Microsoft Windows Series, which use dedicated hardware to store their key and other information to verify the booting OS is legal or not. Dell or EMC or Oracle Database use license to limit how many HW resource can be used. So, &lt;code&gt;license&lt;/code&gt; system is an valuable assert to the company as it can bring the direct profit.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;h2 id=&quot;Aspects-when-designing-license-system&quot;&gt;&lt;a href=&quot;#Aspects-when-designing-license-system&quot; class=&quot;headerlink&quot; title=&quot;Aspects when designing license system&quot;&gt;&lt;/a&gt;Aspects when designing license system&lt;/h2&gt;&lt;ul&gt;
+&lt;li&gt;Security&lt;/li&gt;
+&lt;li&gt;Compatible &lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2 id=&quot;Background&quot;&gt;&lt;a href=&quot;#Background&quot; class=&quot;headerlink&quot; title=&quot;Background&quot;&gt;&lt;/a&gt;Background&lt;/h2&gt;&lt;p&gt;In common, the company would like to design a universal HW platform to carry on different requirements with the reason of decreasing the complex of BOM, leverage the cost on HW expense, etc. In order to make more profit on a universal hardware platform, then you need a license system to give the right authority to your sales/customer. For example, in the wireless system, some company would like sale the HW without any charge or very low price, but those HW only can carry on low volume data/service in the &lt;code&gt;BASIC&lt;/code&gt; state, f.g. LTE station in &lt;code&gt;BASIC&lt;/code&gt; mode only can take 16 Users in one BST,  a limited throughput, a limited Cells can be setup. Basically,  you had to buy a suitable license paper meeting your requirement, just like the menu in the restaurant, you can’t image how many menus did the company make ready for you.&lt;br&gt;In one word, License can make money!!!&lt;/p&gt;
+    
+    </summary>
+    
+    
+  </entry>
   
   <entry>
     <title>Fast logging system in embedded system</title>

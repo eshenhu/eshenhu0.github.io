@@ -2,6 +2,13 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
+    <loc>https://eshenhu.github.io/2017/12/22/Design-a-license-system-in-embedded-system/</loc>
+    
+    <lastmod>2017-12-22T00:21:42.000Z</lastmod>
+    
+  </url>
+  
+  <url>
     <loc>https://eshenhu.github.io/2017/10/23/Fast-logging-system-in-embedded-system/</loc>
     
     <lastmod>2017-11-23T13:23:38.000Z</lastmod>
