@@ -5,7 +5,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://eshenhu.github.io/"/>
-  <updated>2017-12-22T00:57:46.000Z</updated>
+  <updated>2018-02-25T09:34:31.000Z</updated>
   <id>https://eshenhu.github.io/</id>
   
   <author>
@@ -14,6 +14,61 @@
   </author>
   
   <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>Build your private LTE network for IIOT</title>
+    <link href="https://eshenhu.github.io/2017/12/28/Build-your-private-LTE-network-for-IIOT/"/>
+    <id>https://eshenhu.github.io/2017/12/28/Build-your-private-LTE-network-for-IIOT/</id>
+    <published>2017-12-28T09:15:55.000Z</published>
+    <updated>2018-02-25T09:34:31.000Z</updated>
+    
+    <content type="html"><![CDATA[<p><em>Abstract</em>:</p>
+<blockquote>
+<p>In some specfied conditions, the tele operator is considering share/reserve some spectrum resource to the IIOT(Industry IoT)applicance, like the NB-IoT/eMTC tech defined by 3GPP stardard.<br>In this article, we present a solution on how to offload LTE with Selected IP tracffic offload(SIPTO) tech, which provide another practical solution beside the traditional LTE macro cell deployment. This deployment will save the investment and simplify the Network Element deloyment, as well as increase the KPI in local factory.</p>
+</blockquote>
+<p><em>Keywords</em>: SIPTO, LIPA, IMobile Data Offloading</p>
+<h3 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h3><p>With the increase of cost spent in thse back-haul equipment(either in the urban area or in the low-intensity population area), more and more operator will like consider using the existed cable provider (like Comcast in US) as their back-haul alternatively. Specially FTTH and other PON technology become more and more popular, cable operator can provide relatively high QoS now.</p>
+<p>3GPP present the TS23.829 as the guide to the HeNB manufacture how to deploy the off-load infrastructure cooperating with the macro cell to reach the best experience to the end-user. </p>
+<p>Along with the population of Industry 4.0 and edge-computing, more and more geography-fixed device has the requirement to access the network with QoS and throughput. Specially in the smart-factory setup,  they want to rent the telcomm wireless network within their factory-domain or running their owned private wireless network.<br>Specially, the vCPEs in the same eNodeB want to intercommunicate to each other, which means the traffic happened between those vCPEs will not route outside of local domain. for example, in the steaming video like IPTV services in the set-top box, each app was used with P2P technology, locate gateway offloading and vCPEs interconnection each other is a big cons to the end-user’s experience.<br>In some industry area, the end sensors, robots or equipments will generate huge data per day, the factory owner will be careful to consider use, like LTE network as their connecting method. even most of data will not access outside of factory.<br>With this kind of deloyment, the operator will reduce stress on the network and make better profit on the IIoT revolution.</p>
+<img src="/2017/12/28/Build-your-private-LTE-network-for-IIOT/00_network_deployment.png" alt="network_deployment" title="network_deployment">
+<p>As a summary, some characters were:</p>
+<ul>
+<li>SON (automatically select the proper wireless configuration)</li>
+<li>Traffic local Gateway offloading.</li>
+<li>vCPE inter accessibility in the eNodeBs managed by a same LGW.</li>
+</ul>
+<a id="more"></a>
+<h4 id="L-GW"><a href="#L-GW" class="headerlink" title="L-GW"></a>L-GW</h4><img src="/2017/12/28/Build-your-private-LTE-network-for-IIOT/01_network_stack.png" alt="network_stack" title="network_stack">
+<p>An dedicated APN was assigned to vCPEs to indicate that the PDN connection established through this APN in the classic scenario, All the traffics associated with this PDN connection will be offloaded.</p>
+<p>All the equipment under this cell/eNode will be assigned the IP address with the pre-defined pattern which require the private IP range reserved by INNNA.  L-GW will use NAT to masquerade those equipment.</p>
+<h4 id="Local-Traffic-offload-and-optimizing"><a href="#Local-Traffic-offload-and-optimizing" class="headerlink" title="Local Traffic offload and optimizing"></a>Local Traffic offload and optimizing</h4><p>L-GW will be responsible to forward/route ip package, if traffic offload procedure was decided, the HeNB will directly forward the IP frame to the L-GW instead of GTP-U frame.</p>
+<h4 id="VxLAN-support"><a href="#VxLAN-support" class="headerlink" title="VxLAN support"></a>VxLAN support</h4><p>In some factories, the end sensor/robots need peer-to-peer communication, which require the end device support the VxLAN, then all the sensors can be splited/planned in more flexible way.</p>
+<h3 id="Design-details"><a href="#Design-details" class="headerlink" title="Design details"></a>Design details</h3><h3 id="Benchmark-comparsion"><a href="#Benchmark-comparsion" class="headerlink" title="Benchmark comparsion"></a>Benchmark comparsion</h3><h3 id="Customer-Use-Case"><a href="#Customer-Use-Case" class="headerlink" title="Customer Use Case"></a>Customer Use Case</h3>]]></content>
+    
+    <summary type="html">
+    
+      &lt;p&gt;&lt;em&gt;Abstract&lt;/em&gt;:&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;In some specfied conditions, the tele operator is considering share/reserve some spectrum resource to the IIOT(Industry IoT)applicance, like the NB-IoT/eMTC tech defined by 3GPP stardard.&lt;br&gt;In this article, we present a solution on how to offload LTE with Selected IP tracffic offload(SIPTO) tech, which provide another practical solution beside the traditional LTE macro cell deployment. This deployment will save the investment and simplify the Network Element deloyment, as well as increase the KPI in local factory.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;&lt;em&gt;Keywords&lt;/em&gt;: SIPTO, LIPA, IMobile Data Offloading&lt;/p&gt;
+&lt;h3 id=&quot;Introduction&quot;&gt;&lt;a href=&quot;#Introduction&quot; class=&quot;headerlink&quot; title=&quot;Introduction&quot;&gt;&lt;/a&gt;Introduction&lt;/h3&gt;&lt;p&gt;With the increase of cost spent in thse back-haul equipment(either in the urban area or in the low-intensity population area), more and more operator will like consider using the existed cable provider (like Comcast in US) as their back-haul alternatively. Specially FTTH and other PON technology become more and more popular, cable operator can provide relatively high QoS now.&lt;/p&gt;
+&lt;p&gt;3GPP present the TS23.829 as the guide to the HeNB manufacture how to deploy the off-load infrastructure cooperating with the macro cell to reach the best experience to the end-user. &lt;/p&gt;
+&lt;p&gt;Along with the population of Industry 4.0 and edge-computing, more and more geography-fixed device has the requirement to access the network with QoS and throughput. Specially in the smart-factory setup,  they want to rent the telcomm wireless network within their factory-domain or running their owned private wireless network.&lt;br&gt;Specially, the vCPEs in the same eNodeB want to intercommunicate to each other, which means the traffic happened between those vCPEs will not route outside of local domain. for example, in the steaming video like IPTV services in the set-top box, each app was used with P2P technology, locate gateway offloading and vCPEs interconnection each other is a big cons to the end-user’s experience.&lt;br&gt;In some industry area, the end sensors, robots or equipments will generate huge data per day, the factory owner will be careful to consider use, like LTE network as their connecting method. even most of data will not access outside of factory.&lt;br&gt;With this kind of deloyment, the operator will reduce stress on the network and make better profit on the IIoT revolution.&lt;/p&gt;
+&lt;img src=&quot;/2017/12/28/Build-your-private-LTE-network-for-IIOT/00_network_deployment.png&quot; alt=&quot;network_deployment&quot; title=&quot;network_deployment&quot;&gt;
+&lt;p&gt;As a summary, some characters were:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;SON (automatically select the proper wireless configuration)&lt;/li&gt;
+&lt;li&gt;Traffic local Gateway offloading.&lt;/li&gt;
+&lt;li&gt;vCPE inter accessibility in the eNodeBs managed by a same LGW.&lt;/li&gt;
+&lt;/ul&gt;
+    
+    </summary>
+    
+    
+      <category term="SIPTO LIPA IMobile Data Offloading" scheme="https://eshenhu.github.io/tags/SIPTO-LIPA-IMobile-Data-Offloading/"/>
+    
+  </entry>
   
   <entry>
     <title>Build service with SOA in Openwrt</title>
