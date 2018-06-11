@@ -5,7 +5,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://eshenhu.github.io/"/>
-  <updated>2018-02-25T09:34:31.000Z</updated>
+  <updated>2018-06-11T14:25:54.000Z</updated>
   <id>https://eshenhu.github.io/</id>
   
   <author>
@@ -14,6 +14,73 @@
   </author>
   
   <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>build lightweight network monitor tools</title>
+    <link href="https://eshenhu.github.io/2018/05/16/build-lightweight-network-monitor-tools/"/>
+    <id>https://eshenhu.github.io/2018/05/16/build-lightweight-network-monitor-tools/</id>
+    <published>2018-05-16T15:14:19.000Z</published>
+    <updated>2018-06-11T14:25:54.000Z</updated>
+    
+    <content type="html"><![CDATA[<h1 id="Motivation"><a href="#Motivation" class="headerlink" title="Motivation"></a>Motivation</h1><p>Recently my project need a lightweight network monitor tools to peek at the network activity, some basic requirements was list as following:</p>
+<ul>
+<li>Provide basic network/interface SDK to the application.</li>
+<li>The service need provide the report on activities on the network, like <ul>
+<li>interface modification, add/del/modify including ip changes, mac changes, new interface added, etc</li>
+<li>network connectiong status, stale/reachable</li>
+</ul>
+</li>
+<li>Extensibility and decouple serive and client, easy to intergrate other service. </li>
+<li>Lightweight, less CPU usage and memory usage.</li>
+</ul>
+<p>After google some open source projects, I found it seems like no one can fit my requirement, but the iproute2 project was quite fit my requirement. So, why we don’t make iproute2 as a library?</p>
+<p>I list the <em>Pros</em> and <em>Cons</em> if use iproute2 as library:</p>
+<p>Pros:</p>
+<ul>
+<li>No need to write the socket layer code.</li>
+<li>More or even more information about network interfaces can be got. Same functionality with the iproute2 tools.</li>
+<li>Simple API interface.</li>
+</ul>
+<p>Cons:</p>
+<ul>
+<li>iproute2-as-lib library size is big. ~500kb.</li>
+</ul>
+<p>GitHub:<br>  <a href="https://github.com/eshenhu/iproute2_as_lib" target="_blank" rel="external">iprout2_as_lib</a></p>
+<p>Enjoy it!<br><a id="more"></a></p>
+]]></content>
+    
+    <summary type="html">
+    
+      &lt;h1 id=&quot;Motivation&quot;&gt;&lt;a href=&quot;#Motivation&quot; class=&quot;headerlink&quot; title=&quot;Motivation&quot;&gt;&lt;/a&gt;Motivation&lt;/h1&gt;&lt;p&gt;Recently my project need a lightweight network monitor tools to peek at the network activity, some basic requirements was list as following:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Provide basic network/interface SDK to the application.&lt;/li&gt;
+&lt;li&gt;The service need provide the report on activities on the network, like &lt;ul&gt;
+&lt;li&gt;interface modification, add/del/modify including ip changes, mac changes, new interface added, etc&lt;/li&gt;
+&lt;li&gt;network connectiong status, stale/reachable&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;Extensibility and decouple serive and client, easy to intergrate other service. &lt;/li&gt;
+&lt;li&gt;Lightweight, less CPU usage and memory usage.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;After google some open source projects, I found it seems like no one can fit my requirement, but the iproute2 project was quite fit my requirement. So, why we don’t make iproute2 as a library?&lt;/p&gt;
+&lt;p&gt;I list the &lt;em&gt;Pros&lt;/em&gt; and &lt;em&gt;Cons&lt;/em&gt; if use iproute2 as library:&lt;/p&gt;
+&lt;p&gt;Pros:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;No need to write the socket layer code.&lt;/li&gt;
+&lt;li&gt;More or even more information about network interfaces can be got. Same functionality with the iproute2 tools.&lt;/li&gt;
+&lt;li&gt;Simple API interface.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Cons:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;iproute2-as-lib library size is big. ~500kb.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;GitHub:&lt;br&gt;  &lt;a href=&quot;https://github.com/eshenhu/iproute2_as_lib&quot; target=&quot;_blank&quot; rel=&quot;external&quot;&gt;iprout2_as_lib&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Enjoy it!&lt;br&gt;
+    
+    </summary>
+    
+    
+  </entry>
   
   <entry>
     <title>Build your private LTE network for IIOT</title>
