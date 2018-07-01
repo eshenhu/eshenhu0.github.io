@@ -3,6 +3,44 @@
   
     
     <entry>
+      <title><![CDATA[Use DPDK to accelerate LTE networks]]></title>
+      <url>/2018/05/22/Use-DPDK-to-accelerate-LTE-networks/</url>
+      <content type="html"><![CDATA[<p>Along with the revolution of FlexRAN, the Tele was required to provide more flexible services to the customers. One of them is Tele want to provide more customsize services to the paticular users, such like Oil, Medical etc manufacture industries, who want intergrate more industried services within some fixed area. Both the internet Cloud companies and Tele companies want to share this market.</p>
+<p>This reqiures the tradition tele companies adaping to the fast market, utilizing their advantages to make the profits. They also want to manager the networks services in one platform to decrease the investment, f.g. In the scenario above, Tele need to deploy the traffic offloading service in the edge network for saving the time latency, or intergrate the core network services in the nearby edge LTE/5G eNodeB equipment.</p>
+<h1 id="New-platform"><a href="#New-platform" class="headerlink" title="New platform"></a>New platform</h1><p>We cooperate with Intel to make some typical x86 platforms to make tries on these area, and make some progress on how to mano the sevices under different scenarios.</p>
+<p>Intel Atom C3K is one of our lowcost platform, we experience eNodeB/EPC network service on this platform.</p>
+<a id="more"></a>
+<h1 id="What-How-we-made"><a href="#What-How-we-made" class="headerlink" title="What/How we made"></a>What/How we made</h1><p>LTE network stack can be split as serveral ways, refer to the ??? from L1 PHY to the PDCP layer. In this demostration, we make LTE splict with Type 5 method, which is split from PDCP layer from traditional LTE equipement to the centrol x86 resource pool.</p>
+<h1 id="DPDK-VPP"><a href="#DPDK-VPP" class="headerlink" title="DPDK/VPP"></a>DPDK/VPP</h1><p>In the x86 platform, some tries and experience in ARM Soc platform was not quite suitable in x86, the reason include, security, complexicity and more.</p>
+<ul>
+<li>Security: In the x86 platform, the tele require to use private or public Cloud service in the platform, so, security is quite importanct than before.</li>
+<li>Platfrom difference. We consider use more x86 features to accelerate the platform, include the AES instruction, HW additional card, Multi-core etc.</li>
+<li>Complexity: With DPDK/VPP help, it is possible to re-think the arch of SW. How to make the software run faster.</li>
+<li>ETSI compitable. ETSI/OPNFV had already given the reference design on how to make NFV platform.</li>
+</ul>
+<h1 id="Challages"><a href="#Challages" class="headerlink" title="Challages"></a>Challages</h1><p>Actually, as the first step, we only try to make the LTE stack run in the x86 platform. some challages includes: </p>
+<ul>
+<li>Make the advantage of multi-core platform.</li>
+<li>Run to Complete or Service Chains Compute mode.</li>
+<li>How to manage or compose serives chains?</li>
+<li>Use DPDK membuf to rewrite the existed internal structure.</li>
+<li>…</li>
+</ul>
+<p>We made some tries on this challages:</p>
+<ol>
+<li><p>Fully use both run-to-complete mode and service chains.<br>f.g. PDCP layer is an instructin intensity unit, which do the ROHC/Header compression, etc work, in addtion it was sensitive to the latency. We isolate the 2 cores to the PDCP layers, internally vertical split the PDCP work into different services.</p>
+</li>
+<li><p>Limit the CPU/Memory resource to the services<br>Good citizens is important to the robustness of the platform. Use cgroups to limit such resources to each services.</p>
+</li>
+<li><p>Use mempool to manage our internal memory structure.</p>
+</li>
+</ol>
+]]></content>
+      
+        
+    </entry>
+    
+    <entry>
       <title><![CDATA[build lightweight network monitor tools]]></title>
       <url>/2018/05/16/build-lightweight-network-monitor-tools/</url>
       <content type="html"><![CDATA[<h1 id="Motivation"><a href="#Motivation" class="headerlink" title="Motivation"></a>Motivation</h1><p>Recently my project need a lightweight network monitor tools to peek at the network activity, some basic requirements was list as following:</p>
