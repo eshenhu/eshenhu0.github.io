@@ -3,6 +3,35 @@
   
     
     <entry>
+      <title><![CDATA[Write a HW based periodic timer framework]]></title>
+      <url>/2018/08/12/Write-a-HW-based-periodic-timer-framework/</url>
+      <content type="html"><![CDATA[<h2 id="Introduction"><a href="#Introduction" class="headerlink" title="Introduction"></a>Introduction</h2><p>   Linux kernel provided good readable timer operations in the code. <a href="https://linux.die.net/man/7/time" target="_blank" rel="external">ref timer</a></p>
+<p>   Some attributes of system timer in the kernel are:<br>   1) It was not designed for time-critical kernel modules, as it takes much works during the tick, such like <em>update jiffies</em>, <em>process accounting</em>, <em>RCU callback</em>, _irq_work_etc.<br>   2) Some throughput cared system was configed in the kernel configration with “NOHZ” option,<br>   Invoke the tick during the “IDLE” state will offset the impact of the kernel “NOHZ” configration. We just want to invoke the callback instead of wake up other staffs.<br>   3) Nearly all the embedded SoC have their design with 2 or more counter-based HW<br>   timers, it was not wise design binding the periodic work to the system timer.</p>
+<a id="more"></a>
+<h2 id="Write-a-simple-Periodic-Timer-Service-for-the-SoC-with-additional-HW-counters"><a href="#Write-a-simple-Periodic-Timer-Service-for-the-SoC-with-additional-HW-counters" class="headerlink" title="Write a simple Periodic-Timer-Service for the SoC with additional HW counters."></a>Write a simple Periodic-Timer-Service for the SoC with additional HW counters.</h2><p>Some preconditions on this simple HW based timer framework are:</p>
+<ul>
+<li>The counter based HW timer can be programmed to generate the interrupt for fast handling attached events.</li>
+<li>Only periodic task was supported now.</li>
+</ul>
+<h2 id="Detail-design"><a href="#Detail-design" class="headerlink" title="Detail design"></a>Detail design</h2><ul>
+<li><p>Public timer API<br>1) <code>periodic_task_setup(void)</code>  // called during the init stage, init the needed data structures.<br>2) <code>periodic_task_add(cpu, period, (*action), data, *name)</code> // add period task into service.<br>3) <code>periodic_task_remove(*task)/periodic_task_remove_all()</code> // remove task from list.<br>4) <code>periodic_task_get_period(*task)/periodic_task_get_cpu(*task)/periodic_task_get_name(*task)</code> //get method<br>5) <code>global_timer_send_sync()</code> //send IPI to the another SMP processor.<br>6) <code>global_timer_proc()</code> // called when interrupt happened</p>
+</li>
+<li><p>Usage<br>In the arch setup procedure, invoke <code>periodic_task_setup()</code>. Register the <code>global_timer_proc()</code> in timer irq handler.</p>
+</li>
+<li>Implemention<br>I put all the code into my Github repo <a href="https://github.com/eshenhu/PeriodicTimer" target="_blank" rel="external">link</a></li>
+</ul>
+]]></content>
+      
+        
+        <tags>
+            
+            <tag> Linux Kernel Module </tag>
+            
+        </tags>
+        
+    </entry>
+    
+    <entry>
       <title><![CDATA[Use DPDK to accelerate LTE networks]]></title>
       <url>/2018/05/22/Use-DPDK-to-accelerate-LTE-networks/</url>
       <content type="html"><![CDATA[<p>Along with the revolution of FlexRAN, the Tele was required to provide more flexible services to the customers. One of them is Tele want to provide more customsize services to the paticular users, such like Oil, Medical etc manufacture industries, who want intergrate more industried services within some fixed area. Both the internet Cloud companies and Tele companies want to share this market.</p>
