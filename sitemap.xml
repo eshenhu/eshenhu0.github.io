@@ -2,6 +2,13 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
+    <loc>https://eshenhu.github.io/2019/02/18/Golang-race-condition-detection-result-will-not-happene-always/</loc>
+    
+    <lastmod>2019-02-18T14:48:34.257Z</lastmod>
+    
+  </url>
+  
+  <url>
     <loc>https://eshenhu.github.io/2018/12/05/SMEM-SMD-SMSM-1-3/</loc>
     
     <lastmod>2018-12-05T15:03:29.000Z</lastmod>
