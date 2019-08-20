@@ -1,0 +1,75 @@
+<!DOCTYPE html><html lang="en-Us"><head><meta name="generator" content="Hexo 3.9.0"><meta charset="utf-8"><meta name="X-UA-Compatible" content="IE=edge"><meta name="baidu-site-verification" content="1EB8XoOl0C"><title> eTrice (A open source ROOM framework for simplify your work) · eshenhu's blog</title><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="eTrice (A open source ROOM framework for simplify your work) - eshenhu"><meta name="keywords"><meta name="author" content="eshenhu"><link rel="short icon" href="/images/favicon.ico"><link rel="stylesheet" href="/css/bubuzou.css"><link rel="search" type="application/opensearchdescription+xml" href="https://eshenhu.github.io/atom.xml" title="eshenhu's blog"></head><body><header><div class="header row"> <a href="/" class="logo-link"><img src="/images/logo.png"></a><ul class="nav nav-list"><li class="nav-list-item"><a href="/" target="_self" data-hover="博文" class="nav-list-link">博文</a></li><li class="nav-list-item"><a href="/archives/" target="_self" data-hover="归档" class="nav-list-link">归档</a></li><li class="nav-list-item"><a href="/categories/live/" target="_self" data-hover="生活" class="nav-list-link">生活</a></li><li class="nav-list-item"><a href="/categories/film/" target="_self" data-hover="摄影" class="nav-list-link">摄影</a></li><li class="nav-list-item"><a href="/about/" target="_self" data-hover="关于" class="nav-list-link">关于</a></li></ul><div class="search"><a id="search_btn" href="#search"></a></div></div></header><div class="row scroll-con"><section class="container"><!-- for archive page--><div id="postAr" class="post"><article class="post-block"><h1 class="post-title">eTrice (A open source ROOM framework for simplify your work)</h1><div class="post-info">2019-08-20 11:30</div><div class="post-content"><h1 id="Motivation"><a href="#Motivation" class="headerlink" title="Motivation"></a>Motivation</h1><p>The well known event-drive message framework such as <a href="https://libevent.org/" target="_blank" rel="noopener">libevent</a>, <a href="https://libuv.org/" target="_blank" rel="noopener">libuv</a>, was wide used on many open source project, such like node-js, but the drawback is </p>
+<ul>
+<li><p>Task grain size </p>
+<p>Grain size of such framework commonly use <em>thread</em> as their execution unit/boundary, for example, if we want a small <em>float64 Pi (int precious)</em> service in our system, what choice do you prefer on IPC channel? </p>
+<ul>
+<li>domain socket?</li>
+<li>shared memory with OS sync primitive</li>
+<li>lightweigh channel like channel in Golang</li>
+</ul>
+<p>Sometime, this service was not necessary outside one task domain, but we still want to declare its interface clearly. Such <em>Pi()</em> may need CPU intensity work during its execution time, we don’t want to couple with our app code with function call mode as it may block the <em>Parallel</em> work in this transition instead we want parallel our work as much as possible. </p>
+<p>Coroutine? Yes, but neither C or C++ don’t have a good design patterns for coroutine, Golang has a good design pattern on Goroutine, but golang is not suitable for the resource limited HW(maybe later?), another downside of Golang is it seems like it has no good way to binding a task into one/some thread, we want to keep the cache HOT instead of reloaded it every time when it was called.</p>
+</li>
+</ul>
+<a id="more"></a>
+<ul>
+<li><p>Task handle</p>
+<p>Such framework was not well scalable on multi-thread environment, it will get performance degradation when process the CPU intensity task, such as computation work. Such as in Node.js project, developer will relay such task to another thread with built-in channel (work_thread). If you use libuv as the skeleton of your C/C++ project, you have more handy work to do that. Even in the Node.js project, the best practice is use the single-thread mode as your best, otherwise Node.js is not the origin design purpose of Node.js. It is was not designed to do such CPU intensity task in the first day of Node.js. </p>
+</li>
+<li><p>Task decouple<br>We try to write more reusable code in our project, even in a small project or in a resource limited resource project. We want provide a uniform interface outside with whatever representable interface, socket, TCP/UDP, … We want the task with explicit and well-doc interface towards outside. </p>
+</li>
+</ul>
+<p>Inside of one small project, we also want to declare our interface firstly (Programming towards Interface), then the project will be smoothly depart them into different teams. But from more higher site of view, those internal interface was invisible, all the message interactive was happened internally. </p>
+<p>Then we need</p>
+<ul>
+<li>Process the task as fast/parallel as possible.(can be scalable with multi-core resource and can reuse the same CPU resource as much as possible, keep cache hot)</li>
+<li>Decouple the project with explicit layer. (service provider ~SPP and service consumer ~SAP) </li>
+</ul>
+<p>So, we want</p>
+<ul>
+<li>A high performance and reusable message framework.</li>
+<li>A simple representable methods to declare the interface.</li>
+<li>Event-drive methods with priority selections.</li>
+<li>Make developer focus on business logic instead of handling the sync issue.</li>
+</ul>
+<h1 id="The-implementation-of-some-projects"><a href="#The-implementation-of-some-projects" class="headerlink" title="The implementation of some projects"></a>The implementation of some projects</h1><p>Some open source project use in-house implementation on such challenge.</p>
+<ul>
+<li><a href="https://github.com/eclipse/paho.mqtt.c" target="_blank" rel="noopener">Paho</a> (Apache MQTT implementation with C/C++)</li>
+</ul>
+<p>Communication with a shared global list and a global lock between threads, No notification scheme.<br>Producer grad the lock firstly and insert the data into the list, release the lock.<br>Consumer POLL the list to see whether or not changed, if changed, then grad the lock, fetch the newer data and release the lock.</p>
+<p>Drawback is:</p>
+<ul>
+<li>No notification scheme, the consumer will always poll the message list during the time slice given by the OS scheduler. Not a good energy saving patterns.  </li>
+<li>Lots of OS sync primitive in the code, mutex, semaphore, etc. It is easily write code with bug.</li>
+</ul>
+<ul>
+<li>others (Many in-house implementation on this challenge)</li>
+</ul>
+<h1 id="Actor-design-patterns"><a href="#Actor-design-patterns" class="headerlink" title="Actor design patterns"></a>Actor design patterns</h1><p>Actor design pattern was wide used on many language or framework as its built-in. such as Erlang, Golang(not exactly), Akka.<br>Can we make it in a small project with less 10K code size?</p>
+<h2 id="ROOM"><a href="#ROOM" class="headerlink" title="ROOM"></a>ROOM</h2><h2 id="Implementation"><a href="#Implementation" class="headerlink" title="Implementation"></a>Implementation</h2><ul>
+<li><a href="https://en.wikipedia.org/wiki/ObjecTime" target="_blank" rel="noopener">ObjectTime</a>(Rational) (later brought by IBM Rose Realtime, now its name changed to one part of IBM Rational Architecture Real Time Edition).</li>
+<li><a href="https://en.wikipedia.org/wiki/Rational_Rhapsody" target="_blank" rel="noopener">Rhapsody</a>. (I-Logic, later brought by IBM, now revolution to IBM Rhosophy, some overlap with IBM Rational Suite)</li>
+<li><a href="https://www.eclipse.org/etrice/" target="_blank" rel="noopener">eTrice</a>. (Open Source project, less feature than the commercial ones, but we can make it better)</li>
+<li>Others</li>
+</ul>
+<p>ROOM recommended use the uniform formated message talking between actors, no sync primitive needed. The traditional IPC methods will be translated into native message with additional <em>PROXY</em> actor implemented.<br>The following picture will demonstrate the relation between actor, threads, process.</p>
+<img src="/2019/08/20/eTrice/actor.png" title="Actor">
+<h2 id="Why-ROOM-was-not-popular-in-the-software-domain"><a href="#Why-ROOM-was-not-popular-in-the-software-domain" class="headerlink" title="Why ROOM was not popular in the software domain?"></a>Why ROOM was not popular in the software domain?</h2><p>As far as know, ROOM was wide used in Tele, Auto, Aerospace industry, the common characteristic of both area is it require more serious requirement than the toy electronics, If you look at the customer of the both commercial ROOM tools, Ericsson, Bosch,  etc.</p>
+<p>Some disadvantages in ROOM are:</p>
+<ul>
+<li>Learning curve. ROOM use DSL to represent FSM change internal, even it is a subset of BIG UML2, it need the developer to learn it, BUT, you will be used to program with that once you learn it.</li>
+<li>Making the logic complex than natural. Maybe the whole world is COMPLEX than you think, Promise/Await design patterns was impossible in some business logic. for example, TCP/IP stack has more than 100 state change in its FSM, it really hard to understand its implementation logic. I must admit ROOM make the logic more complex in some side, you need switch between the front end GUI and the generated code, you need to switch your thinking between two dimensions all the time. </li>
+</ul>
+<p>My experience is </p>
+<ul>
+<li>decouple the message skeleton with your implementation.</li>
+<li>try to declare your interface with a narrow view firstly.</li>
+<li>refactor your code all the time.</li>
+</ul>
+<h2 id="Practice"><a href="#Practice" class="headerlink" title="Practice"></a>Practice</h2><p>In our project, we use eTrice to translate some existed project into new actor way of working with some additional home work based on that.</p>
+</div></article></div><div class="right-container"><div class="widget"><div class="category"><h4>分类归档</h4></div></div><div class="widget"><div class="tagcloud"><h4>标签云</h4><a href="/tags/Language/" style="font-size: 10px;">Language</a> <a href="/tags/Linux-Kernel-Module/" style="font-size: 10px;">Linux Kernel Module</a> <a href="/tags/Qualcomm/" style="font-size: 10px;">Qualcomm,</a> <a href="/tags/SIPTO-LIPA-IMobile-Data-Offloading/" style="font-size: 10px;">SIPTO LIPA IMobile Data Offloading</a> <a href="/tags/golang/" style="font-size: 10px;">golang</a></div></div><div class="widget"><div class="recent"><h4>最近文章</h4><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2019/08/20/eTrice/">eTrice (A open source ROOM framework for simplify your work)</a></li><li class="post-list-item"><a class="post-list-link" href="/2019/02/18/Golang-race-condition-detection-result-will-not-happene-always/">Golang-race-condition-detection-result-will-not-happene-always</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/12/05/SMEM-SMD-SMSM-1-3/">SMEM,SMD,SMSM 1/3</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/11/01/Drgon-ball-release-their-code-to-explain-the-reason-cool/">Drgon ball release their code to explain the reason, cool</a></li><li class="post-list-item"><a class="post-list-link" href="/2018/08/12/Write-a-HW-based-periodic-timer-framework/">Write a HW based periodic timer framework</a></li></ul></div></div><div class="widget"><div id="arAnchorBar"></div></div></div></section></div><div class="right-menu"></div><div class="modal search-modal"><div class="input-field"><input type="text" id="search_input"><label for="search-input">搜索</label></div><div id="search_result" class="search-result"></div></div><div class="blog-overlay"></div><footer class="row"><div class="footer-con"><div class="paginator"><a href="/2019/02/18/Golang-race-condition-detection-result-will-not-happene-always/" class="next">NEXT</a></div><div id="cloud-tie-wrapper" class="cloud-tie-wrapper"></div><script>var cloudTieConfig = {
+    url: document.location.href, 
+    sourceId: "",
+    productKey: "656e246ebfc7420d82eb5d9a339b50c2",
+    target: "cloud-tie-wrapper"
+};</script><script src="https://img1.cache.netease.com/f2e/tie/yun/sdk/loader.js"></script><div class="copyright"><p>© 2016 - 2019 <a target="_blank">eshenhu</a>, powered by <a href="https://hexo.io/" target="_blank">Hexo</a> <br> and <a href="https://github.com/Bulandent/hexo-theme-bubuzou" target="_blank">hexo-theme-bubuzou</a>.</p></div><div class="totop"><i></i></div></div></footer><script async src="//cdn.bootcss.com/mathjax/2.6.1/MathJax.js?config=TeX-MML-AM_CHTML"></script><script src="/scripts/jquery-1.8.2.min.js"></script><script src="/scripts/arAnchor.js"></script><script src="/scripts/main.js"></script><script>(function(b,o,i,l,e,r){b.GoogleAnalyticsObject=l;b[l]||(b[l]=function(){(b[l].q=b[l].q||[]).push(arguments)});b[l].l=+new Date;e=o.createElement(i);r=o.getElementsByTagName(i)[0];e.src='//www.google-analytics.com/analytics.js';r.parentNode.insertBefore(e,r)}(window,document,'script','ga'));ga('create',"UA-65933410-1",'auto');ga('send','pageview');</script></body></html>
